@@ -1,0 +1,22 @@
+*.log
+final_v1/
+# Ignore everything inside the 'archive' directory
+archieve/*
+!archieve/**/*.py
+# BUT, do NOT ignore any file ending in .py inside 'archive' or its subdirectories
+processed_data_pytorch_adaptive_pre_post_buffer_lovo_personalization_v2_enhanced/
+
+# Python-specific ignores
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment folders
+venv/
+.venv/
+env/
+.env
+
+# IDE-specific folders (e.g., VS Code)
+.vscode
