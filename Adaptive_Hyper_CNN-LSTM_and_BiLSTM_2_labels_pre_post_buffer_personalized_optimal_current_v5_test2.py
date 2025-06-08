@@ -23,7 +23,7 @@ from sklearn.metrics import (accuracy_score, auc, confusion_matrix, f1_score,
                              precision_score, recall_score, roc_auc_score,
                              roc_curve)
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils import class_weight
 # Import Transformer modules
 from torch.nn import TransformerEncoder, TransformerEncoderLayer
@@ -3234,7 +3234,7 @@ def train_lopo_general_model(
             X_val_lopo_reshaped = X_val_lopo.reshape(-1, num_features_lopo)
             X_test_lopo_reshaped = X_test_lopo.reshape(-1, num_features_lopo)
 
-            scaler_lopo = StandardScaler()
+            scaler_lopo = MinMaxScaler()
             scaler_lopo.fit(X_train_lopo_reshaped)
 
             X_train_lopo_scaled = scaler_lopo.transform(X_train_lopo_reshaped)
@@ -3245,9 +3245,9 @@ def train_lopo_general_model(
             X_val_lopo = X_val_lopo_scaled.reshape(num_samples_val_lopo, seq_len_val_lopo, num_features_lopo)
             X_test_lopo = X_test_lopo_scaled.reshape(num_samples_test_lopo, seq_len_test_lopo, num_features_lopo)
 
-            logging.info(f"Applied StandardScaler to LOPO General data splits (Excluding {excluded_patient_id}, {model_type}, {current_hp_combo_str}).")
+            logging.info(f"Applied MinMaxScaler to LOPO General data splits (Excluding {excluded_patient_id}, {model_type}, {current_hp_combo_str}).")
         else:
-            logging.warning(f"One or more LOPO General data splits are empty after splitting. Skipping StandardScaler. (Excluding {excluded_patient_id}, {model_type}, {current_hp_combo_str})")
+            logging.warning(f"One or more LOPO General data splits are empty after splitting. Skipping MinMaxScaler. (Excluding {excluded_patient_id}, {model_type}, {current_hp_combo_str})")
 
     except ValueError as e:
         logging.warning(
@@ -3751,7 +3751,7 @@ def process_single_patient_personalization(
             X_val_pat_reshaped = X_val_pat.reshape(-1, num_features_pat)
             X_test_pat_reshaped = X_test_pat.reshape(-1, num_features_pat)
 
-            scaler_pat = StandardScaler()
+            scaler_pat = MinMaxScaler()
             scaler_pat.fit(X_train_pat_reshaped)
 
             X_train_pat_scaled = scaler_pat.transform(X_train_pat_reshaped)
@@ -3762,9 +3762,9 @@ def process_single_patient_personalization(
             X_val_pat = X_val_pat_scaled.reshape(num_samples_val_pat, seq_len_val_pat, num_features_pat)
             X_test_pat = X_test_pat_scaled.reshape(num_samples_test_pat, seq_len_test_pat, num_features_pat)
 
-            logging.info(f"Applied StandardScaler to patient {current_patient_id}'s personalization data splits ({model_type}, {combo_name}, {current_hp_combo_str}).")
+            logging.info(f"Applied MinMaxScaler to patient {current_patient_id}'s personalization data splits ({model_type}, {combo_name}, {current_hp_combo_str}).")
         else:
-            logging.warning(f"One or more personalization data splits for patient {current_patient_id} are empty after splitting. Skipping StandardScaler. ({model_type}, {combo_name}, {current_hp_combo_str})")
+            logging.warning(f"One or more personalization data splits for patient {current_patient_id} are empty after splitting. Skipping MinMaxScaler. ({model_type}, {combo_name}, {current_hp_combo_str})")
 
     except ValueError as e:
         logging.warning(
@@ -5460,7 +5460,7 @@ if __name__ == "__main__":
                                 X_val_reshaped = X_val_og.reshape(-1, num_features)
                                 X_test_reshaped = X_test_og.reshape(-1, num_features)
 
-                                scaler = StandardScaler()
+                                scaler = MinMaxScaler()
                                 scaler.fit(X_train_reshaped)
 
                                 X_train_scaled = scaler.transform(X_train_reshaped)
@@ -5471,9 +5471,9 @@ if __name__ == "__main__":
                                 X_val_og = X_val_scaled.reshape(num_samples_val, seq_len_val, num_features)
                                 X_test_og = X_test_scaled.reshape(num_samples_test, seq_len_test, num_features)
 
-                                logging.info(f"Applied StandardScaler to Overall General data splits ({current_model_type}, {combination_name}, {current_hp_combo_str}).")
+                                logging.info(f"Applied MinMaxScaler to Overall General data splits ({current_model_type}, {combination_name}, {current_hp_combo_str}).")
                             else:
-                                logging.warning(f"One or more Overall General data splits are empty after splitting. Skipping StandardScaler. ({current_model_type}, {combination_name}, {current_hp_combo_str})")
+                                logging.warning(f"One or more Overall General data splits are empty after splitting. Skipping MinMaxScaler. ({current_model_type}, {combination_name}, {current_hp_combo_str})")
 
                         except ValueError as e:
                             logging.warning(
