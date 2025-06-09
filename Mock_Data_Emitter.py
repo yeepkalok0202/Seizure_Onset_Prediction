@@ -11,7 +11,7 @@ import pandas as pd
 from flask import Flask, jsonify
 
 # --- CONFIGURATION ---
-PATIENT_DATA_DIR = 'F:\\benchmarking_4\\data\\MSEL_01676'
+PATIENT_DATA_DIR = 'F:\\benchmarking_4\\data\\MSEL_01097'
 BASE_SENSORS = ['HR', 'EDA', 'TEMP', 'ACC']
 SENSOR_MAPPING = {"HR": "HR", "EDA": "EDA", "TEMP": "TEMP", "ACC": "Acc Mag"}
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

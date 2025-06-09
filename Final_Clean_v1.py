@@ -19,9 +19,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from sklearn.metrics import (accuracy_score, auc, confusion_matrix, f1_score,
-                             precision_score, recall_score, roc_auc_score,
-                             roc_curve)
+from sklearn.metrics import (accuracy_score, auc, average_precision_score,
+                             confusion_matrix, f1_score,
+                             precision_recall_curve, precision_score,
+                             recall_score, roc_auc_score, roc_curve)
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils import class_weight
@@ -36,7 +37,7 @@ OUTPUT_DIR = "final_v1"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # You MUST change this path to point to your actual file
-EXTERNAL_PROCESSED_DATA_FILE = "final_v1/cached_processed_data/processed_patient_data_n10_piw_30_pieb_180_pib_180_sf_1_wait.pkl" #
+EXTERNAL_PROCESSED_DATA_FILE = "final_v1/cached_processed_data/processed_patient_data_n10_piw_30_pieb_180_pib_180_sf_1_personalized_MS01110.pkl" #
 
 # --- FEATURE FLAGS ---
 
@@ -47,7 +48,7 @@ ENABLE_ADAPTIVE_SENSORS = False
 # Set to True to iterate through all combinations of TUNABLE_ hyperparameters; False to use only the first value from each list
 ENABLE_TUNABLE_HYPERPARAMETERS = False
 # Set to True to run Phase 2 (Personalization/LOPO); False to only run Phase 1 (Overall General Model)
-ENABLE_PERSONALIZATION = False
+ENABLE_PERSONALIZATION = True
 
 # --- FEATURE FLAGS ---
 
@@ -189,7 +190,7 @@ TUNABLE_RESNET_LSTM_DROPOUT = [
 # --- TUNABLE HYPERPARAMETER FOR RESNET ---
 
 # --- MODEL TYPES TO RUN ---
-MODEL_TYPES_TO_RUN = ["CNN-LSTM"]  # Example: ['CNN-LSTM', 'CNN-BiLSTM', "CNN-GRU", "DenseNet-LSTM", "DenseNet-BiLSTM", "ResNet-LSTM", "ResNet-BiLSTM"]
+MODEL_TYPES_TO_RUN = ['CNN-LSTM', 'CNN-BiLSTM', "CNN-GRU"]  # Example: ['CNN-LSTM', 'CNN-BiLSTM', "CNN-GRU", "DenseNet-LSTM", "DenseNet-BiLSTM", "ResNet-LSTM", "ResNet-BiLSTM"]
 # Example Benchmark with NonHybrid : ["LSTM", "BiLSTM", "CNN","GRU","Transformer"]
 # =========================================================== TRAINING CONFIG ===========================================================
 
@@ -1851,12 +1852,23 @@ def calculate_metrics(all_labels, all_predictions, all_probs):
 
     sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0.0 # Recall of positive class
     specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0 # Recall of negative class
+    
+    try:
+        # average_precision_score is the AUC-PR
+        if len(np.unique(all_labels)) > 1:
+            auc_pr = average_precision_score(all_labels, all_probs)
+        else:
+            auc_pr = 0.0
+    except ValueError:
+        auc_pr = 0.0
+        
     return {
         "accuracy": accuracy,
         "precision": precision,
         "recall": recall,
         "f1_score": f1,
         "auc_roc": auc_roc,
+        "auc_pr": auc_pr,
         "confusion_matrix": cm,
         "sensitivity": sensitivity,
         "specificity": specificity,
@@ -3022,6 +3034,12 @@ def process_single_patient_personalization(
             f'Before Personalization AUC-ROC (Patient {current_patient_id}, {combo_name})',
             os.path.join(plot_dir_pers_before, 'before_personalization_auc_roc.png') # CHANGED
         )
+        plot_pr_curve(
+            metrics_before['all_probs'],
+            metrics_before['all_labels'],
+            f'Before Personalization PR Curve (Patient {current_patient_id}, {combo_name})',
+            os.path.join(plot_dir_pers_before, 'before_personalization_pr_curve.png')
+        )
         plot_probability_distribution(
             metrics_before['all_probs'],
             metrics_before['all_labels'],
@@ -3307,6 +3325,12 @@ def process_single_patient_personalization(
             metrics_after['all_labels'],
             f'After Personalization AUC-ROC (Patient {current_patient_id}, {combo_name})',
             os.path.join(plot_dir_pers_after, 'after_personalization_auc_roc.png') # CHANGED
+        )
+        plot_pr_curve(
+            metrics_after['all_probs'],
+            metrics_after['all_labels'],
+            f'After Personalization PR Curve (Patient {current_patient_id}, {combo_name})',
+            os.path.join(plot_dir_pers_after, 'after_personalization_pr_curve.png')
         )
         plot_probability_distribution(
             metrics_after['all_probs'],
@@ -3594,14 +3618,15 @@ def get_patients_and_indices_for_combination(
 def format_metrics_for_summary(metrics_dict, prefix=""):
     """Formats a dictionary of metrics for printing in the summary file."""
     if not metrics_dict:
-        return f"{prefix}Loss: N/A, Acc: N/A, Prec: N/A, Rec: N/A, F1: N/A, AUC: N/A, CM: N/A"
+        return f"{prefix}Loss: N/A, Acc: N/A, Prec: N/A, Rec: N/A, F1: N/A, AUC-ROC: N/A, AUC-PR: N/A, CM: N/A"
 
     loss = metrics_dict.get("loss", "N/A")
     acc = metrics_dict.get("accuracy", "N/A")
     prec = metrics_dict.get("precision", "N/A")
     rec = metrics_dict.get("recall", "N/A")
     f1 = metrics_dict.get("f1_score", "N/A")
-    auc = metrics_dict.get("auc_roc", "N/A")
+    auc_roc = metrics_dict.get("auc_roc", "N/A")
+    auc_pr = metrics_dict.get("auc_pr", "N/A") #<-- GET AUC-PR
     cm = metrics_dict.get("confusion_matrix", [[0, 0], [0, 0]])
 
     # Format CM nicely
@@ -3613,9 +3638,10 @@ def format_metrics_for_summary(metrics_dict, prefix=""):
     prec_str = f"{prec:.4f}" if isinstance(prec, (int, float)) else str(prec)
     rec_str = f"{rec:.4f}" if isinstance(rec, (int, float)) else str(rec)
     f1_str = f"{f1:.4f}" if isinstance(f1, (int, float)) else str(f1)
-    auc_str = f"{auc:.4f}" if isinstance(auc, (int, float)) else str(auc)
+    auc_roc_str = f"{auc_roc:.4f}" if isinstance(auc_roc, (int, float)) else str(auc_roc)
+    auc_pr_str = f"{auc_pr:.4f}" if isinstance(auc_pr, (int, float)) else str(auc_pr) #<-- FORMAT AUC-PR
 
-    return f"{prefix}Loss: {loss_str}, Acc: {acc_str}, Prec: {prec_str}, Rec: {rec_str}, F1: {f1_str}, AUC: {auc_str}, CM: {cm_str}"
+    return f"{prefix}Loss: {loss_str}, Acc: {acc_str}, Prec: {prec_str}, Rec: {rec_str}, F1: {f1_str}, AUC-ROC: {auc_roc_str}, AUC-PR: {auc_pr_str}, CM: {cm_str}"
 
 
 def print_personalization_summary(personalization_results, output_file=None):
@@ -3746,6 +3772,30 @@ def plot_auc_roc(all_probs, all_labels, title, save_path):
     except Exception as e:
         logging.error(f"Error generating or saving AUC-ROC plot '{title}': {e}")
 
+def plot_pr_curve(all_probs, all_labels, title, save_path):
+    """Generates and saves a Precision-Recall curve plot."""
+    try:
+        if len(all_labels) > 0 and len(np.unique(all_labels)) > 1:
+            precision, recall, _ = precision_recall_curve(all_labels, all_probs)
+            auc_pr = average_precision_score(all_labels, all_probs)
+
+            plt.figure(figsize=(8, 6))
+            plt.plot(recall, precision, color='blue', lw=2, label=f'PR curve (AUC-PR = {auc_pr:.2f})')
+            plt.xlabel('Recall (Sensitivity)')
+            plt.ylabel('Precision')
+            plt.title(title)
+            plt.legend(loc="lower left")
+            plt.grid(True)
+            plt.tight_layout()
+
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
+            plt.savefig(save_path)
+            plt.close()
+            logging.info(f"Saved Precision-Recall curve plot to {save_path}")
+        else:
+            logging.warning(f"Skipping PR Curve plot for '{title}': Insufficient data or only one class.")
+    except Exception as e:
+        logging.error(f"Error generating or saving PR Curve plot '{title}': {e}")
 
 def plot_confusion_matrix(cm, classes, title, save_path):
     """Generates and saves a Confusion Matrix plot."""
@@ -4656,6 +4706,12 @@ if __name__ == "__main__":
                                         f'Overall General Model AUC-ROC ({current_model_type}, {timestamp_str}, {combination_name}, HP {hp_idx+1})',
                                         os.path.join(plot_dir_og, f'overall_general_hp_{hp_idx+1}_auc_roc.png')
                                     )
+                                    plot_pr_curve(
+                                        overall_general_test_metrics_data['all_probs'],
+                                        overall_general_test_metrics_data['all_labels'],
+                                        f'Overall General Model PR Curve ({current_model_type}, {timestamp_str}, {combination_name}, HP {hp_idx+1})',
+                                        os.path.join(plot_dir_og, f'overall_general_hp_{hp_idx+1}_pr_curve.png')
+                                    )
                                     plot_probability_distribution(
                                         overall_general_test_metrics_data['all_probs'],
                                         overall_general_test_metrics_data['all_labels'],
@@ -4937,13 +4993,13 @@ if __name__ == "__main__":
             summary_file.write("--- Results per Hyperparameter Combination, Model Type, and Sensor Combination ---\n")
             # --- CHANGED HEADER ---
             summary_file.write(
-                "  HP Combo | Model Type | Sensors  | Patients | Overall General Model (Validation)                    | Overall General Model (Test)                      | Average Personalized Model (Test)                 | Avg Personalization Change\n"
+                "  HP Combo | Model Type | Sensors  | Patients | Overall General Model (Validation)                              | Overall General Model (Test)                                | Average Personalized Model (Test)                           | Avg Personalization Change\n"
             )
             summary_file.write(
-                "  Idx      |            |          | Suitable | Acc  | Prec | Rec  | F1   | AUC  | Sens | Spec | Acc  | Prec | Rec  | F1   | AUC  | Sens | Spec | Acc  | Prec | Rec  | F1   | AUC  | Sens | Spec | Acc Change\n" # Added 'Acc Change' for consistency
+                "  Idx      |            |          | Suitable | Acc  | Prec | Rec  | F1   | AUC-ROC | AUC-PR | Sens | Spec | Acc  | Prec | Rec  | F1   | AUC-ROC | AUC-PR | Sens | Spec | Acc  | Prec | Rec  | F1   | AUC-ROC | AUC-PR | Sens | Spec | Acc Change\n"
             )
             summary_file.write(
-                "  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n" # Adjusted length
+                "  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n" # Adjusted length
             )
             # --- END CHANGED HEADER ---
 
@@ -4979,7 +5035,9 @@ if __name__ == "__main__":
                         val_auc = overall_general_val_metrics.get('auc_roc', 0.0)
                         val_sens = overall_general_val_metrics.get('sensitivity', 0.0) # NEW
                         val_spec = overall_general_val_metrics.get('specificity', 0.0) # NEW
-
+                        val_auc_pr = overall_general_val_metrics.get('auc_pr', 0.0)
+                        
+                        test_auc_pr = overall_general_test_metrics.get('auc_pr', 0.0)
                         test_acc = overall_general_test_metrics.get('accuracy', 0.0)
                         test_prec = overall_general_test_metrics.get('precision', 0.0)
                         test_rec = overall_general_test_metrics.get('recall', 0.0)
@@ -4990,10 +5048,10 @@ if __name__ == "__main__":
 
 
                         overall_general_val_metrics_str = (
-                            f"{val_acc:.2f} | {val_prec:.2f} | {val_rec:.2f} | {val_f1:.2f} | {val_auc:.2f} | {val_sens:.2f} | {val_spec:.2f}" # CHANGED format
+                            f"{val_acc:.2f} | {val_prec:.2f} | {val_rec:.2f} | {val_f1:.2f} | {val_auc:.2f}   | {val_auc_pr:.2f}   | {val_sens:.2f} | {val_spec:.2f}"
                         )
                         overall_general_test_metrics_str = (
-                            f"{test_acc:.2f} | {test_prec:.2f} | {test_rec:.2f} | {test_f1:.2f} | {test_auc:.2f} | {test_sens:.2f} | {test_spec:.2f}" # CHANGED format
+                            f"{test_acc:.2f} | {test_prec:.2f} | {test_rec:.2f} | {test_f1:.2f} | {test_auc:.2f}   | {test_auc_pr:.2f}   | {test_sens:.2f} | {test_spec:.2f}"
                         )
 
 
@@ -5012,9 +5070,10 @@ if __name__ == "__main__":
                                 avg_pers_auc = avg_personalized_metrics.get('auc_roc', 0.0)
                                 avg_pers_sens = avg_personalized_metrics.get('sensitivity', 0.0) # NEW
                                 avg_pers_spec = avg_personalized_metrics.get('specificity', 0.0) # NEW
+                                avg_pers_auc_pr = avg_personalized_metrics.get('auc_pr', 0.0)
 
                                 avg_personalized_metrics_str = (
-                                    f"{avg_pers_acc:.2f} | {avg_pers_prec:.2f} | {avg_pers_rec:.2f} | {avg_pers_f1:.2f} | {avg_pers_auc:.2f} | {avg_pers_sens:.2f} | {avg_pers_spec:.2f}" # CHANGED format
+                                    f"{avg_pers_acc:.2f} | {avg_pers_prec:.2f} | {avg_pers_rec:.2f} | {avg_pers_f1:.2f} | {avg_pers_auc:.2f}   | {avg_pers_auc_pr:.2f}   | {avg_pers_sens:.2f} | {avg_pers_spec:.2f}"
                                 )
 
                                 total_change_combo = 0
@@ -5047,19 +5106,19 @@ if __name__ == "__main__":
                                 )
                                 avg_change_combo_str = f"{avg_change_combo:.4f}"
                             else:
-                                avg_personalized_metrics_str = "N/A    | N/A  | N/A  | N/A  | N/A  | N/A  | N/A" # To match column width, 7 fields
+                                avg_personalized_metrics_str = "N/A    | N/A  | N/A  | N/A  | N/A     | N/A    | N/A  | N/A" # To match column width, 8 fields
                                 avg_change_combo_str = "N/A"
                         else:
-                            avg_personalized_metrics_str = "N/A    | N/A  | N/A  | N/A  | N/A  | N/A  | N/A"
+                            avg_personalized_metrics_str = "N/A    | N/A  | N/A  | N/A  | N/A     | N/A    | N/A  | N/A"
                             avg_change_combo_str = "N/A"
 
 
                         summary_file.write(
-                            f"  {hp_combo_idx:<8} | {model_type:<10} | {combo_name:<8} | {num_suitable_patients:<8} | {overall_general_val_metrics_str:<53} | {overall_general_test_metrics_str:<53} | {avg_personalized_metrics_str:<53} | {avg_change_combo_str}\n" # CHANGED COLUMN SPACING
+                            f"  {hp_combo_idx:<8} | {model_type:<10} | {combo_name:<8} | {num_suitable_patients:<8} | {overall_general_val_metrics_str:<62} | {overall_general_test_metrics_str:<62} | {avg_personalized_metrics_str:<62} | {avg_change_combo_str}\n"
                         )
 
                     summary_file.write(
-                        "  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n\n" # Adjusted length
+                        "  ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n\n" # Adjusted length
                     )
     except Exception as e:
         logging.error(f"An error occurred while writing the final summary file: {e}")
