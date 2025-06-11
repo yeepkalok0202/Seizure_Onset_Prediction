@@ -1,7 +1,7 @@
 # main_app.py
 
-from multiprocessing import Process, Queue
 import time
+from multiprocessing import Process, Queue
 
 # Import the target functions from the other files
 from Preprocessing_Daemon import preprocessing_process
@@ -15,7 +15,9 @@ if __name__ == '__main__':
         'SEGMENT_SECONDS': 30,
         'BASE_SENSORS': ['HR', 'EDA', 'TEMP', 'ACC'],
         'EMISSION_RATE_HZ': 1,
-        'INFERENCE_BUNDLE_PATH': 'final_v1/training_data/20250608_172456/CNN-LSTM/HR_EDA_TEMP_ACC/hp_combo_1/overall_general_inference_bundle.pkl'
+        'INFERENCE_BUNDLE_PATH': 'final_v1\\training_data\\20250609_061959_allModels_persona_0.5\\CNN-LSTM\\HR_EDA_TEMP_ACC\\hp_combo_1\\personalized\\MSEL_01110\\patient_MSEL_01110_inference_bundle.pkl'
+        # 'INFERENCE_BUNDLE_PATH': 'final_v1\\training_data\\20250609_061959_allModels_persona_0.5\\CNN-LSTM\\HR_EDA_TEMP_ACC\\hp_combo_1\\overall_general_inference_bundle.pkl'
+
     }
 
     # 1. Create the shared queue that will pass the DataFrame

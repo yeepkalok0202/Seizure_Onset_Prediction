@@ -25,11 +25,11 @@ def preprocess_realtime_segment(raw_data_dict, config):
     
     if missing_sensors:
         # If any sensor is completely missing, report it immediately
-        return missing_sensors # --- MODIFIED ---
+        return missing_sensors
 
     # Continue with processing only if all sensors are present
     df.replace(0, np.nan, inplace=True)
-    rule = f"{int(1000/config['TARGET_SAMPLING_HZ'])}ms"
+    rule = f"{int(1/config['TARGET_SAMPLING_HZ'])}s"
     resampled_df = df.resample(rule).mean()
 
     interpolated_df = resampled_df.interpolate(method='time', limit_direction='both')

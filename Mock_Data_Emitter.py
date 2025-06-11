@@ -12,7 +12,7 @@ import pandas as pd
 from flask import Flask, jsonify
 
 # --- CONFIGURATION ---
-PATIENT_DATA_DIR = 'F:\\benchmarking_4\\data\\MSEL_01676'
+PATIENT_DATA_DIR = 'F:\\Demo_Patient\\MSEL_01110'
 BASE_SENSORS = ['HR', 'EDA', 'TEMP', 'ACC']
 SENSOR_MAPPING = {"HR": "HR", "EDA": "EDA", "TEMP": "TEMP", "ACC": "Acc Mag"}
 EMISSION_RATE_HZ = 1
@@ -152,7 +152,7 @@ def get_data():
         if timestamp_str not in reformatted_data:
             reformatted_data[timestamp_str] = {s: None for s in BASE_SENSORS}
         reformatted_data[timestamp_str][sensor] = value
-
+    print(len(reformatted_data))
     return jsonify(reformatted_data)
 
 if __name__ == '__main__':

@@ -7,6 +7,7 @@ import math
 import os
 import pickle
 import random
+import re
 import sys  # Import sys for logging to console
 import time
 from collections import OrderedDict  # Added for better HP printing
@@ -48,7 +49,7 @@ ENABLE_ADAPTIVE_SENSORS = False
 # Set to True to iterate through all combinations of TUNABLE_ hyperparameters; False to use only the first value from each list
 ENABLE_TUNABLE_HYPERPARAMETERS = False
 # Set to True to run Phase 2 (Personalization/LOPO); False to only run Phase 1 (Overall General Model)
-ENABLE_PERSONALIZATION = True
+ENABLE_PERSONALIZATION = False
 
 # --- FEATURE FLAGS ---
 
@@ -190,7 +191,7 @@ TUNABLE_RESNET_LSTM_DROPOUT = [
 # --- TUNABLE HYPERPARAMETER FOR RESNET ---
 
 # --- MODEL TYPES TO RUN ---
-MODEL_TYPES_TO_RUN = ['CNN-LSTM', 'CNN-BiLSTM', "CNN-GRU"]  # Example: ['CNN-LSTM', 'CNN-BiLSTM', "CNN-GRU", "DenseNet-LSTM", "DenseNet-BiLSTM", "ResNet-LSTM", "ResNet-BiLSTM"]
+MODEL_TYPES_TO_RUN = ['CNN-LSTM']  # Example: ['CNN-LSTM', 'CNN-BiLSTM', "CNN-GRU", "DenseNet-LSTM", "DenseNet-BiLSTM", "ResNet-LSTM", "ResNet-BiLSTM"]
 # Example Benchmark with NonHybrid : ["LSTM", "BiLSTM", "CNN","GRU","Transformer"]
 # =========================================================== TRAINING CONFIG ===========================================================
 
@@ -3931,6 +3932,93 @@ def plot_probability_distribution(all_probs, all_labels, title, save_path):
     except Exception as e:
         logging.error(f"Error generating or saving probability distribution plot '{title}': {e}")
 
+def analyze_and_plot_sensor_importance(summary_file_path, model_type, metric_to_plot='AUC-ROC'):
+    """
+    Parses the final summary file to compare performance of single-sensor models,
+    saves a comparison summary, and plots a feature importance bar chart.
+    """
+    logging.info(f"--- Analyzing Sensor Importance from {summary_file_path} ---")
+    results = []
+    metric_names = ['Acc', 'Prec', 'Rec', 'F1', 'AUC-ROC', 'AUC-PR', 'Sens', 'Spec']
+
+    try:
+        with open(summary_file_path, 'r') as f:
+            for line in f:
+                # Find result lines for the specified model that are single-sensor runs (no '+' in the sensor name)
+                if f"| {model_type}" in line and "+" not in line.split('|')[2].strip():
+                    parts = [p.strip() for p in line.split('|')]
+
+                    # Ensure the line is a valid data line with enough columns
+                    if len(parts) >= 8:
+                        sensor = parts[2]
+                        
+                        # --- MODIFICATION: CORRECTED PARSING LOGIC ---
+                        # Column 7 (index 6) contains the 'Average Personalized Model (Test)' metrics
+                        personalized_metrics_str = parts[6]
+                        
+                        # Split the string by '|' and convert to floats
+                        metric_values = [float(v.strip()) for v in personalized_metrics_str.split('|')]
+
+                        # Check if we successfully parsed 8 metric values
+                        if len(metric_values) == 8:
+                            # Create a dictionary by zipping the predefined names and the parsed values
+                            metric_dict = dict(zip(metric_names, metric_values))
+                            metric_dict['Sensor'] = sensor
+                            results.append(metric_dict)
+                        else:
+                            logging.warning(f"Could not parse metrics for sensor '{sensor}'. Found {len(metric_values)} values, expected 8.")
+                        # --- END MODIFICATION ---
+
+    except Exception as e:
+        logging.error(f"Could not parse summary file for sensor importance: {e}", exc_info=True)
+        return
+
+    if not results:
+        logging.warning("No single-sensor results found in the summary file to analyze for importance.")
+        return
+
+    # Create a DataFrame and sort by the chosen metric
+    df = pd.DataFrame(results)
+    if metric_to_plot not in df.columns:
+        logging.error(f"Metric '{metric_to_plot}' not found in parsed results. Available: {df.columns.tolist()}")
+        return
+
+    df = df.sort_values(by=metric_to_plot, ascending=False)
+
+    # --- Save text summary of feature importance ---
+    importance_summary_path = os.path.join(os.path.dirname(summary_file_path), "sensor_importance_summary.txt")
+    with open(importance_summary_path, 'w') as f:
+        f.write(f"Sensor Importance Analysis based on {model_type} Performance\n")
+        f.write(f"Ranked by: {metric_to_plot}\n")
+        f.write("-" * 60 + "\n")
+        # Select relevant columns for a cleaner summary
+        summary_cols = ['Sensor', 'AUC-ROC', 'F1', 'Acc', 'Sens', 'Spec']
+        f.write(df[summary_cols].to_string(index=False))
+    logging.info(f"Sensor importance summary saved to: {importance_summary_path}")
+
+    # --- Generate and save the plot ---
+    plt.style.use('seaborn-v0_8-whitegrid')
+    fig, ax = plt.subplots(figsize=(12, 7))
+    sns.barplot(x='Sensor', y=metric_to_plot, data=df, ax=ax, palette='viridis', order=df['Sensor']) # Use the sorted order for the plot as well
+    ax.set_title(f'Sensor Importance for {model_type} based on Personalized Model Performance', fontsize=16, pad=20)
+    ax.set_xlabel('Individual Sensor', fontsize=12)
+    ax.set_ylabel(f'Average Test {metric_to_plot}', fontsize=12)
+    
+    if not df.empty:
+        min_y = df[metric_to_plot].min()
+        max_y = df[metric_to_plot].max()
+        ax.set_ylim(bottom=max(0, min_y - 0.05), top=min(1.0, max_y + 0.05))
+
+    # Add metric values on top of the bars
+    for p in ax.patches:
+        ax.annotate(f'{p.get_height():.3f}', (p.get_x() + p.get_width() / 2., p.get_height()),
+                    ha='center', va='center', xytext=(0, 9), textcoords='offset points', fontsize=11)
+
+    plt.tight_layout()
+    plot_save_path = os.path.join(os.path.dirname(summary_file_path), "sensor_importance_chart.png")
+    plt.savefig(plot_save_path, dpi=300)
+    logging.info(f"Sensor importance plot saved to: {plot_save_path}")
+    plt.close()
 # --- Main Execution ---
 if __name__ == "__main__":
     os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -4165,6 +4253,12 @@ if __name__ == "__main__":
             ] = {}
 
             for current_combination in sensor_combinations_to_run:
+                logging.info(f"Re-seeding RNGs with SEED={SEED} for sensor combination: {current_combination}")
+                random.seed(SEED)
+                np.random.seed(SEED)
+                torch.manual_seed(SEED)
+                if torch.cuda.is_available():
+                    torch.cuda.manual_seed_all(SEED)
                 combination_name = "_".join(
                     current_combination
                 ).upper()
