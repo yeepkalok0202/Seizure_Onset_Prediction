@@ -97,8 +97,11 @@ def data_ingestion_thread():
             pass
     
     while merged_stream_heap:
-        bundle_start_time = merged_stream_heap[0][0]
+        # --- NEW: Clock-aligned 1-second binning ---
+        raw_ts = merged_stream_heap[0][0]
+        bundle_start_time = raw_ts.floor("1s")           # Align to integer second
         bundle_end_time = bundle_start_time + pd.Timedelta(seconds=1)
+
 
         logging.debug(f"\n--- Heap before bundling ({bundle_start_time.isoformat()}) ---")
         sorted_heap_for_display = sorted(merged_stream_heap)

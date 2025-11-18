@@ -1,0 +1,73 @@
+Experiment Summary - 20250604_195934
+Total execution time: 904.27 seconds
+
+--- Feature Flags ---
+RUN_ALL_MODEL_TYPES: True
+ENABLE_ADAPTIVE_SENSORS: False
+ENABLE_TUNABLE_HYPERPARAMETERS: False
+ENABLE_PERSONALIZATION: False
+
+--- External Data Source Configuration ---
+  Pre-processed data loaded from: final_v1/cached_processed_data/processed_patient_data_n10_piw_30_pieb_180_pib_180_sf_1_wait.pkl
+  Number of patients loaded: 10
+  Segment Duration: 30 seconds
+  Effective Sampling Frequency: 1 Hz
+
+--- Tunable Hyperparameters Settings ---
+  TUNABLE_CONV_FILTERS: [[128, 256]]
+  TUNABLE_CONV_KERNEL_SIZE: [5]
+  TUNABLE_POOL_SIZE: [2]
+  TUNABLE_LSTM_UNITS: [128]
+  TUNABLE_DENSE_UNITS: [128]
+  TUNABLE_GENERAL_MODEL_EPOCHS: [200]
+  TUNABLE_PERSONALIZATION_EPOCHS: [200]
+  TUNABLE_GENERAL_MODEL_LR: [0.0001]
+  TUNABLE_PERSONALIZATION_LR: [0.0001]
+  TUNABLE_BATCH_SIZE: [64]
+  TUNABLE_PERSONALIZATION_BATCH_SIZE: [64]
+  TUNABLE_DROPOUT_RATE: [0]
+  TUNABLE_WEIGHT_DECAY_GENERAL: [0]
+  TUNABLE_WEIGHT_DECAY_PERSONALIZATION: [0]
+  TUNABLE_GRU_UNITS: [128]
+  TUNABLE_TRANSFORMER_NHEAD: [8]
+  TUNABLE_TRANSFORMER_NLAYERS: [4]
+  TUNABLE_TRANSFORMER_DIM_FEEDFORWARD: [256]
+  TUNABLE_TCN_NUM_CHANNELS: [[32, 32, 32], [64, 64, 64, 64]]
+  TUNABLE_TCN_KERNEL_SIZE: [3, 5]
+  TUNABLE_DENSENET_GROWTH_RATE: [16, 32]
+  TUNABLE_DENSENET_BLOCK_CONFIG: [(6, 12, 24)]
+  TUNABLE_DENSENET_BN_SIZE: [4, 8]
+  TUNABLE_RESNET_BLOCK_TYPE: ['BasicBlock']
+  TUNABLE_RESNET_LAYERS: [[2, 2, 2, 2], [3, 4, 6, 3]]
+  TUNABLE_RESNET_LSTM_HIDDEN_SIZE: [64, 128]
+  TUNABLE_RESNET_LSTM_NUM_LAYERS: [1, 2]
+  TUNABLE_RESNET_LSTM_DROPOUT: [0.2, 0.3]
+
+MODEL_TYPES_TO_RUN: ['CNN', 'LSTM', 'BiLSTM', 'GRU', 'CNN-LSTM', 'CNN-BiLSTM', 'CNN-GRU']
+BASE_SENSORS: ['HR', 'EDA', 'TEMP', 'ACC']
+
+--- Results per Hyperparameter Combination, Model Type, and Sensor Combination ---
+  HP Combo | Model Type | Sensors  | Patients | Overall General Model (Validation)                    | Overall General Model (Test)                      | Average Personalized Model (Test)                 | Avg Personalization Change
+  Idx      |            |          | Suitable | Acc  | Prec | Rec  | F1   | AUC  | Sens | Spec | Acc  | Prec | Rec  | F1   | AUC  | Sens | Spec | Acc  | Prec | Rec  | F1   | AUC  | Sens | Spec | Acc Change
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  1        | BiLSTM     | HR_EDA_TEMP_ACC | 10       | 0.66 | 0.64 | 0.71 | 0.68 | 0.73 | 0.71 | 0.60        | 0.64 | 0.62 | 0.71 | 0.66 | 0.71 | 0.71 | 0.57        | N/A    | N/A  | N/A  | N/A  | N/A  | N/A  | N/A       | N/A
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  1        | CNN        | HR_EDA_TEMP_ACC | 10       | 0.82 | 0.81 | 0.84 | 0.82 | 0.90 | 0.84 | 0.81        | 0.81 | 0.81 | 0.81 | 0.81 | 0.90 | 0.81 | 0.81        | N/A    | N/A  | N/A  | N/A  | N/A  | N/A  | N/A       | N/A
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  1        | CNN-BiLSTM | HR_EDA_TEMP_ACC | 10       | 0.85 | 0.86 | 0.83 | 0.84 | 0.93 | 0.83 | 0.86        | 0.84 | 0.85 | 0.82 | 0.83 | 0.93 | 0.82 | 0.86        | N/A    | N/A  | N/A  | N/A  | N/A  | N/A  | N/A       | N/A
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  1        | CNN-GRU    | HR_EDA_TEMP_ACC | 10       | 0.84 | 0.84 | 0.85 | 0.84 | 0.92 | 0.85 | 0.84        | 0.82 | 0.82 | 0.83 | 0.82 | 0.91 | 0.83 | 0.81        | N/A    | N/A  | N/A  | N/A  | N/A  | N/A  | N/A       | N/A
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  1        | CNN-LSTM   | HR_EDA_TEMP_ACC | 10       | 0.83 | 0.81 | 0.85 | 0.83 | 0.92 | 0.85 | 0.80        | 0.83 | 0.81 | 0.86 | 0.83 | 0.92 | 0.86 | 0.79        | N/A    | N/A  | N/A  | N/A  | N/A  | N/A  | N/A       | N/A
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  1        | GRU        | HR_EDA_TEMP_ACC | 10       | 0.64 | 0.64 | 0.65 | 0.64 | 0.71 | 0.65 | 0.63        | 0.64 | 0.63 | 0.65 | 0.64 | 0.71 | 0.65 | 0.62        | N/A    | N/A  | N/A  | N/A  | N/A  | N/A  | N/A       | N/A
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  1        | LSTM       | HR_EDA_TEMP_ACC | 10       | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00        | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00        | N/A    | N/A  | N/A  | N/A  | N/A  | N/A  | N/A       | N/A
+  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+

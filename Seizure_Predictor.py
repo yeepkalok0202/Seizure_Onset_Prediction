@@ -1,3 +1,4 @@
+import json
 import pickle
 import time
 from collections import deque
@@ -5,15 +6,14 @@ from datetime import datetime, timezone
 from multiprocessing import Manager, Process, Queue
 
 import gradio as gr
+import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
 
 from Final_Clean_v1 import get_model_class
 
-
-# =================================================================================
-# The model prediction process (runs in the background)
+hardcoded_values = [0.23111213743686676, 0.23111213743686676, 0.23111213743686676, 0.23111213743686676, 0.23111213743686676, 0.23111213743686676, 0.23111213743686676, 0.22827306389808655, 0.22665201127529144, 0.22476531565189362, 0.2229674905538559, 0.22121579945087433, 0.21961016952991486, 0.2180272489786148, 0.21620136499404907, 0.21430504322052002, 0.21259161829948425, 0.21121397614479065, 0.21023906767368317, 0.20948222279548645, 0.2087354212999344, 0.20807111263275146, 0.20761530101299286, 0.20720937848091125, 0.2068619430065155, 0.20646026730537415, 0.20625260472297668, 0.20624561607837677, 0.20636263489723206, 0.20683634281158447, 0.00042700808262452483, 0.00046488395310007036, 0.00034494363353587687, 0.0005195935373194516, 0.0005904355202801526, 0.0005231006070971489, 0.0005623793113045394, 0.0006297142244875431, 0.000727910955902189, 0.0006107762455940247, 0.0005623793113045394, 0.0006724999402649701, 0.0007258066907525063, 0.0006781111587770283, 0.0006612774450331926, 0.000677409756463021, 0.0007222996791824698, 0.0006598746404051781, 0.0006528605590574443, 0.0007791134994477034, 0.0008057669037953019, 0.0007973500760272145, 0.0007791134994477034, 0.0008759074844419956, 0.0007215982768684626, 0.0007791134994477034, 0.0007342235767282546, 0.0007791134994477034, 0.0008752060821279883, 0.0007784120971336961, 0.7348632216453552, 0.739175021648407, 0.7408565282821655, 0.7408565282821655, 0.7408565282821655, 0.7429603338241577, 0.7419586777687073, 0.7429608702659607, 0.7461966276168823, 0.7473098635673523, 0.7473098635673523, 0.7494409084320068, 0.7484240531921387, 0.7494417428970337, 0.7526846528053284, 0.7537990212440491, 0.751666247844696, 0.7526860237121582, 0.7537990212440491, 0.7559295892715454, 0.7549083232879639, 0.7537990212440491, 0.7537990212440491, 0.7559309601783752, 0.754906415939331, 0.7559316158294678, 0.7549058794975281, 0.7559322118759155, 0.7570433020591736, 0.7570433020591736, 0.8666191101074219, 0.8665863275527954, 0.8669257760047913, 0.866325318813324, 0.8666314482688904, 0.8666298985481262, 0.866325855255127, 0.8672400712966919, 0.8669247031211853, 0.8660125732421875, 0.8657054305076599, 0.866620659828186, 0.8660105466842651, 0.8657074570655823, 0.8669350147247314, 0.8660120368003845, 0.866621196269989, 0.8669247031211853, 0.8668718934059143, 0.8668021559715271, 0.8665196299552917, 0.8667939305305481, 0.866831362247467, 0.8672144412994385, 0.8668447136878967, 0.8668472766876221, 0.8662417531013489, 0.8669047355651855, 0.8672400712966919, 0.8669236898422241]
 # =================================================================================
 def prediction_process(data_queue, shared_prediction, shared_history, shared_pickled_df, shared_status, shared_alert_state, shared_alert_history, config):
     print("[Predictor] Process started. Loading model and scaler from bundle...")
@@ -21,6 +21,12 @@ def prediction_process(data_queue, shared_prediction, shared_history, shared_pic
         bundle = pickle.load(open(config['INFERENCE_BUNDLE_PATH'], 'rb'))
         model_hyperparams = bundle['hyperparameters']['model_hyperparameters']
         model_state_dict = bundle['model_state_dict']
+        # convert tensors to lists
+        json_ready = {k: v.tolist() for k, v in model_state_dict.items()}
+        print("Ok")
+        # save to json file
+        with open("model_state_dict.json", "w") as f:
+            json.dump(json_ready, f)
         model_type = bundle['model_type']
         scaler = bundle['scaler']
         
@@ -55,7 +61,13 @@ def prediction_process(data_queue, shared_prediction, shared_history, shared_pic
                 else:
                     latest_timestamp = latest_timestamp.tz_convert("UTC")                
                 scaled_segment = scaler.transform(processed_df.values)
-                segment_tensor = torch.tensor(scaled_segment, dtype=torch.float32).permute(1, 0).unsqueeze(0)
+                print(scaled_segment)
+                # segment_tensor = torch.tensor(scaled_segment, dtype=torch.float32).permute(1, 0).unsqueeze(0)
+                segment_tensor = torch.tensor(
+                    np.array(hardcoded_values).reshape(4, 30), dtype=torch.float32
+                ).unsqueeze(0)
+
+                print("Heyyyy", segment_tensor)
                 
                 with torch.no_grad():
                     output = model(segment_tensor)
@@ -260,4 +272,4 @@ def launch_predictor_ui(data_queue, config):
             )
 
         print("[Gradio] Launching UI at http://127.0.0.1:7860 (or a similar address)...")
-        demo.launch()
+        demo.launch(pwa=True)

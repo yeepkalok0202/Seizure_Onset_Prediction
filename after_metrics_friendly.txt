@@ -1,0 +1,90 @@
+MSEL_00095
+  Loss      : 0.0294
+  Accuracy  : 0.9865
+  Precision : 0.9737
+  Recall    : 1.0000
+  F1 Score  : 0.9867
+  AUC-ROC   : 1.0000
+  AUC-PR    : 1.0000
+
+MSEL_01462
+  Loss      : 0.0558
+  Accuracy  : 0.9796
+  Precision : 1.0000
+  Recall    : 0.9583
+  F1 Score  : 0.9787
+  AUC-ROC   : 0.9983
+  AUC-PR    : 0.9983
+
+MSEL_00764
+  Loss      : 0.1770
+  Accuracy  : 0.9286
+  Precision : 0.9038
+  Recall    : 0.9592
+  F1 Score  : 0.9307
+  AUC-ROC   : 0.9867
+  AUC-PR    : 0.9873
+
+MSEL_01550
+  Loss      : 0.2179
+  Accuracy  : 0.9184
+  Precision : 0.8571
+  Recall    : 1.0000
+  F1 Score  : 0.9231
+  AUC-ROC   : 0.9883
+  AUC-PR    : 0.9889
+
+MSEL_00502
+  Loss      : 0.1540
+  Accuracy  : 0.9184
+  Precision : 0.9184
+  Recall    : 0.9184
+  F1 Score  : 0.9184
+  AUC-ROC   : 0.9838
+  AUC-PR    : 0.9846
+
+MSEL_00501
+  Loss      : 0.1361
+  Accuracy  : 0.9182
+  Precision : 0.8898
+  Recall    : 0.9545
+  F1 Score  : 0.9211
+  AUC-ROC   : 0.9897
+  AUC-PR    : 0.9904
+
+MSEL_01097
+  Loss      : 0.2233
+  Accuracy  : 0.9054
+  Precision : 0.8750
+  Recall    : 0.9459
+  F1 Score  : 0.9091
+  AUC-ROC   : 0.9766
+  AUC-PR    : 0.9792
+
+MSEL_00172
+  Loss      : 0.3186
+  Accuracy  : 0.8707
+  Precision : 0.8375
+  Recall    : 0.9178
+  F1 Score  : 0.8758
+  AUC-ROC   : 0.9372
+  AUC-PR    : 0.9296
+
+MSEL_01110
+  Loss      : 0.4147
+  Accuracy  : 0.8370
+  Precision : 0.8780
+  Recall    : 0.7826
+  F1 Score  : 0.8276
+  AUC-ROC   : 0.9211
+  AUC-PR    : 0.8514
+
+MSEL_00182
+  Loss      : 0.4774
+  Accuracy  : 0.7959
+  Precision : 0.7500
+  Recall    : 0.8750
+  F1 Score  : 0.8077
+  AUC-ROC   : 0.9033
+  AUC-PR    : 0.8729
+

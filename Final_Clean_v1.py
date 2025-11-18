@@ -38,7 +38,7 @@ OUTPUT_DIR = "final_v1"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # You MUST change this path to point to your actual file
-EXTERNAL_PROCESSED_DATA_FILE = "final_v1/cached_processed_data/processed_patient_data_n10_piw_30_pieb_180_pib_180_sf_1_personalized_MS01110.pkl" #
+EXTERNAL_PROCESSED_DATA_FILE = "final_v1/cached_processed_data/processed_patient_data_n10_piw_30_pieb_180_pib_180_sf_1_mean.pkl" #
 
 # --- FEATURE FLAGS ---
 
@@ -49,7 +49,7 @@ ENABLE_ADAPTIVE_SENSORS = False
 # Set to True to iterate through all combinations of TUNABLE_ hyperparameters; False to use only the first value from each list
 ENABLE_TUNABLE_HYPERPARAMETERS = False
 # Set to True to run Phase 2 (Personalization/LOPO); False to only run Phase 1 (Overall General Model)
-ENABLE_PERSONALIZATION = False
+ENABLE_PERSONALIZATION = True
 
 # --- FEATURE FLAGS ---
 
@@ -382,7 +382,7 @@ class BiLSTM_Only(nn.Module):
         )
         self.bilstm_dropout = nn.Dropout(self.dropout_rate)
 
-        # The input to the dense layer will be lstm_units * 2 because of bidirectionality
+        # lstm_units * 2 because of bidirectionality
         self.dense_layers = nn.Sequential(
             nn.Linear(lstm_units * 2, dense_units),
             nn.ReLU(),
@@ -391,21 +391,9 @@ class BiLSTM_Only(nn.Module):
         )
 
     def forward(self, x):
-        # x shape: (batch_size, input_features, seq_len) from DataLoader
-        # BiLSTM expects (batch_size, seq_len, input_features)
-        bilstm_in = x.permute(0, 2, 1)  # Permute to (batch_size, seq_len, input_features)
-
+        bilstm_in = x.permute(0, 2, 1)  # Permute to (batch_size, seq_len, input_features
         bilstm_out, _ = self.bilstm(bilstm_in)  # bilstm_out shape: (batch_size, seq_len, lstm_units * 2)
-        
         bilstm_out = self.bilstm_dropout(bilstm_out)
-
-        # Take the output from the last timestep for classification
-        # The output of the BiLSTM for the last time step already concatenates
-        # the forward LSTM's last hidden state and the backward LSTM's first hidden state (which is effectively its "last" from the sequence perspective).
-        
-        # last_timestep_out = bilstm_out[:, -1, :]  # shape: (batch_size, lstm_units * 2)
-
-        # output = self.dense_layers(last_timestep_out)
         pooled = torch.mean(bilstm_out, dim=1)  # (batch_size, lstm_units * 2)
         output = self.dense_layers(pooled)
         return output
@@ -443,7 +431,7 @@ class CNN_Only(nn.Module):
 
         for i, out_channels in enumerate(conv_filters):
             kernel_size = max(1, conv_kernel_size)
-            pool_s = max(1, pool_size) # Renamed to avoid conflict with module
+            pool_s = max(1, pool_size)
             padding = kernel_size // 2
 
             conv_layers_list.append(
@@ -604,7 +592,6 @@ class GRU_Only(nn.Module):
         )
 
     def forward(self, x):
-        # x shape: (batch_size, input_features, seq_len)
         gru_in = x.permute(0, 2, 1) # Permute to (batch_size, seq_len, input_features)
         gru_out, _ = self.gru(gru_in) # gru_out shape: (batch_size, seq_len, gru_units)
         gru_out = self.gru_dropout(gru_out)
@@ -615,7 +602,7 @@ class GRU_Only(nn.Module):
 class LSTM_Only(nn.Module):
     def __init__(
         self,
-        input_features, # Renamed from input_channels for clarity in LSTM context
+        input_features,
         seq_len,
         lstm_units,
         dense_units,
@@ -628,15 +615,11 @@ class LSTM_Only(nn.Module):
         self.dense_units = dense_units
         self.dropout_rate = dropout_rate
 
-        # Ensure input_features and seq_len are valid
         if input_features <= 0:
             input_features = 1
         if seq_len <= 0:
             seq_len = 1
 
-        # LSTM layer(s)
-        # LSTM expects input shape (batch_size, seq_len, input_features)
-        # Our dataset provides (batch_size, input_features, seq_len), so we need to permute in forward pass
         self.lstm = nn.LSTM(
             input_size=input_features,
             hidden_size=lstm_units,
@@ -645,8 +628,6 @@ class LSTM_Only(nn.Module):
         # Add Dropout after LSTM layer
         self.lstm_dropout = nn.Dropout(self.dropout_rate)
 
-        # Dense layers
-        # The input to this layer will be the mean of the LSTM outputs, which has a size of lstm_units.
         self.dense_layers = nn.Sequential(
             nn.Linear(lstm_units, dense_units), # Input size is LSTM hidden size
             nn.ReLU(),
@@ -655,19 +636,10 @@ class LSTM_Only(nn.Module):
         )
 
     def forward(self, x):
-        # x shape: (batch_size, input_features, seq_len) from the DataLoader/Dataset
-        # LSTM expects (batch_size, seq_len, input_features)
         lstm_in = x.permute(0, 2, 1) # Permute to (batch_size, seq_len, input_features)
-
         lstm_out, _ = self.lstm(lstm_in) # lstm_out shape: (batch_size, seq_len, lstm_units)
-
         lstm_out = self.lstm_dropout(lstm_out) # Apply dropout
-
-        # --- MODIFICATION ---
-        # Instead of taking the last timestep, take the mean of the outputs across the sequence dimension.
-        # This aggregates information from all time steps.
         mean_output = torch.mean(lstm_out, dim=1) # shape: (batch_size, lstm_units)
-
         output = self.dense_layers(mean_output) # shape: (batch_size, 1)
         return output
     
@@ -757,11 +729,9 @@ class CNN_LSTM(nn.Module):
         cnn_out = self.conv_layers(x)
         if cnn_out.shape[2] == 0:
             return torch.tensor([[0.5]] * x.size(0), device=x.device)
-
         lstm_in = cnn_out.permute(0, 2, 1)  # shape: (batch_size, seq_len, features)
         lstm_out, _ = self.lstm(lstm_in)
         lstm_out = self.lstm_dropout(lstm_out)
-
         mean_output = torch.mean(lstm_out, dim=1)  # shape: (batch_size, lstm_units)
         output = self.dense_layers(mean_output)
         return output
@@ -782,11 +752,11 @@ class CNN_BiLSTM(nn.Module):
         super(CNN_BiLSTM, self).__init__()
         self.input_channels = input_channels
         self.seq_len = seq_len
-        self.conv_filters = conv_filters  # Now taken as argument
-        self.conv_kernel_size = conv_kernel_size  # Now taken as argument
-        self.pool_size = pool_size  # Now taken as argument
-        self.lstm_units = lstm_units  # Now taken as argument
-        self.dense_units = dense_units  # Now taken as argument
+        self.conv_filters = conv_filters 
+        self.conv_kernel_size = conv_kernel_size  
+        self.pool_size = pool_size 
+        self.lstm_units = lstm_units 
+        self.dense_units = dense_units
         self.dropout_rate = dropout_rate
         
         if input_channels <= 0:
@@ -813,10 +783,10 @@ class CNN_BiLSTM(nn.Module):
                     in_channels, out_channels, kernel_size=kernel_size, padding=padding
                 )
             )
-            conv_layers_list.append(nn.BatchNorm1d(out_channels)) # <--- ADDED: Batch Normalization
+            conv_layers_list.append(nn.BatchNorm1d(out_channels))
             conv_layers_list.append(nn.ReLU())
             conv_layers_list.append(nn.MaxPool1d(pool_size))
-            conv_layers_list.append(nn.Dropout(self.dropout_rate)) # <--- ADDED: Dropout after pooling
+            conv_layers_list.append(nn.Dropout(self.dropout_rate))
 
             in_channels = out_channels
 
@@ -832,7 +802,6 @@ class CNN_BiLSTM(nn.Module):
 
         # Calculate the output sequence length after CNN layers dynamically
         try:
-            # Create a dummy tensor on the CPU for shape calculation
             dummy_input = torch.randn(
                 1, self.input_channels, self.seq_len, dtype=torch.float32
             )
@@ -843,10 +812,7 @@ class CNN_BiLSTM(nn.Module):
             self.lstm_input_seq_len = dummy_output.shape[
                 2
             ]  # Sequence length dimension after CNN/Pooling
-
-            # Check if the output sequence length is valid for LSTM
             if self.lstm_input_seq_len <= 0:
-                # This can happen if seq_len is too short for the filters/pooling
                 raise ValueError(
                     f"Calculated LSTM input sequence length is zero or negative ({self.lstm_input_seq_len}). Check CNN/Pooling parameters relative to segment length ({self.seq_len})."
                 )
@@ -854,46 +820,36 @@ class CNN_BiLSTM(nn.Module):
         except Exception as e:
             logging.error(
                 f"Error calculating layer output size during model init for {self.__class__.__name__} with input_channels={self.input_channels}, seq_len={self.seq_len}: {e}"
-            )  # Changed print to logging.error
-            # Set fallback values or re-raise - re-raising is better during development
+            ) 
             raise e
 
         self.bilstm = nn.LSTM(
             input_size=self.lstm_input_features,
-            hidden_size=lstm_units,  # Use lstm_units argument
+            hidden_size=lstm_units, 
             batch_first=True,
             bidirectional=True,
         )
-        self.bilstm_dropout = nn.Dropout(self.dropout_rate) # <--- ADDED: Dropout layer for BiLSTM output
+        self.bilstm_dropout = nn.Dropout(self.dropout_rate)
 
         self.dense_layers = nn.Sequential(
             nn.Linear(
                 lstm_units * 2, dense_units
-            ),  # Use lstm_units and dense_units arguments, input size is doubled
+            ), 
             nn.ReLU(),
             nn.Linear(dense_units, 1),  # Use dense_units argument
             nn.Sigmoid(),
         )
 
     def forward(self, x):
-        # x shape: (batch_size, channels, seq_len)
         cnn_out = self.conv_layers(x)  # shape: (batch_size, filters, reduced_seq_len)
-        # Handle potential empty output after CNN if seq_len collapsed to 0
         if cnn_out.shape[2] == 0:
-            # Or return a default value, depending on desired behavior
-            # Returning 0.5 (sigmoid output) might be reasonable for prediction task
-            # Ensure the tensor is on the correct device
             return torch.tensor(
                 [[0.5]] * x.size(0), device=x.device
-            )  # Return neutral predictions if seq_len collapses
+            ) 
 
-        lstm_in = cnn_out.permute(
-            0, 2, 1
-        )  # shape: (batch_size, reduced_seq_len, filters)
-        bilstm_out, _ = self.bilstm(
-            lstm_in
-        )  # shape: (batch_size, reduced_seq_len, LSTM_UNITS * 2)
-        bilstm_out = self.bilstm_dropout(bilstm_out) # <--- APPLIED DROPOUT
+        lstm_in = cnn_out.permute(0, 2, 1)  # shape: (batch_size, reduced_seq_len, filters)
+        bilstm_out, _ = self.bilstm(lstm_in)  # shape: (batch_size, reduced_seq_len, LSTM_UNITS * 2)
+        bilstm_out = self.bilstm_dropout(bilstm_out) 
         pooled = torch.mean(bilstm_out, dim=1)  # (batch, 2*hidden)
         output = self.dense_layers(pooled)
         return output
@@ -979,8 +935,6 @@ class CNN_GRU(nn.Module):
                 f"Error calculating layer output size during model init for {self.__class__.__name__} with input_channels={self.input_channels}, seq_len={self.seq_len}: {e}"
             )
             raise e
-
-        # GRU layer
         # GRU expects input shape (batch_size, seq_len, input_features)
         self.gru = nn.GRU(
             input_size=self.gru_input_features,
@@ -989,7 +943,6 @@ class CNN_GRU(nn.Module):
         )
         # Add Dropout after GRU layer
         self.gru_dropout = nn.Dropout(self.dropout_rate)
-
         # Dense layers
         self.dense_layers = nn.Sequential(
             nn.Linear(
@@ -999,7 +952,6 @@ class CNN_GRU(nn.Module):
             nn.Linear(dense_units, 1),
             nn.Sigmoid(),
         )
-
     def forward(self, x):
         # x shape: (batch_size, channels, seq_len)
         cnn_out = self.conv_layers(x)  # shape: (batch_size, filters, reduced_seq_len)
@@ -1007,13 +959,8 @@ class CNN_GRU(nn.Module):
             return torch.tensor(
                 [[0.5]] * x.size(0), device=x.device
             )
-
-        gru_in = cnn_out.permute(
-            0, 2, 1
-        )  # shape: (batch_size, reduced_seq_len, filters)
-        gru_out, _ = self.gru(
-            gru_in
-        )  # shape: (batch_size, reduced_seq_len, GRU_UNITS)
+        gru_in = cnn_out.permute( 0, 2, 1)  # shape: (batch_size, reduced_seq_len, filters)
+        gru_out, _ = self.gru(gru_in)  # shape: (batch_size, reduced_seq_len, GRU_UNITS)
         gru_out = self.gru_dropout(gru_out) # Apply dropout
         pooled = torch.mean(gru_out, dim=1)  # (batch, 2*hidden)
         output = self.dense_layers(pooled)
@@ -3210,6 +3157,7 @@ def process_single_patient_personalization(
             ).to(device)
         else:
             raise ValueError(f"Unknown model type for instantiation: {model_type}")
+            
         personalized_model.load_state_dict(lopo_general_model_state_dict)
     except (ValueError, RuntimeError, Exception) as e:
         logging.error(

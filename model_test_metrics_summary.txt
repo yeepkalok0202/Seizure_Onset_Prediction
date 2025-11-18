@@ -1,0 +1,63 @@
+Model: LSTM (HP 1)
+  Loss: 0.6559
+  Accuracy: 0.5877
+  Precision: 0.5585
+  Recall: 0.8372
+  F1 Score: 0.6701
+  AUC-ROC: 0.6300
+  AUC-PR: 0.6250
+
+Model: BiLSTM (HP 1)
+  Loss: 0.6313
+  Accuracy: 0.6110
+  Precision: 0.5797
+  Recall: 0.8076
+  F1 Score: 0.6749
+  AUC-ROC: 0.6779
+  AUC-PR: 0.6684
+
+Model: CNN (HP 1)
+  Loss: 0.4050
+  Accuracy: 0.8150
+  Precision: 0.8016
+  Recall: 0.8372
+  F1 Score: 0.8190
+  AUC-ROC: 0.8994
+  AUC-PR: 0.8951
+
+Model: GRU (HP 1)
+  Loss: 0.6694
+  Accuracy: 0.5772
+  Precision: 0.5525
+  Recall: 0.8118
+  F1 Score: 0.6575
+  AUC-ROC: 0.6276
+  AUC-PR: 0.6160
+
+Model: CNN-LSTM (HP 1)
+  Loss: 0.3773
+  Accuracy: 0.8192
+  Precision: 0.7882
+  Recall: 0.8732
+  F1 Score: 0.8285
+  AUC-ROC: 0.9130
+  AUC-PR: 0.9078
+
+Model: CNN-BiLSTM (HP 1)
+  Loss: 0.3922
+  Accuracy: 0.8309
+  Precision: 0.8281
+  Recall: 0.8351
+  F1 Score: 0.8316
+  AUC-ROC: 0.9108
+  AUC-PR: 0.9066
+
+Model: CNN-GRU (HP 1)
+  Loss: 0.3943
+  Accuracy: 0.8214
+  Precision: 0.8154
+  Recall: 0.8309
+  F1 Score: 0.8230
+  AUC-ROC: 0.9036
+  AUC-PR: 0.8969
+

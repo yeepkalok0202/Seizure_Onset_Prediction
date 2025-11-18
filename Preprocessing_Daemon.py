@@ -16,7 +16,7 @@ def preprocess_realtime_segment(raw_data_dict, config):
     df = pd.DataFrame.from_dict(raw_data_dict, orient='index')
     df.index = pd.to_datetime(df.index, format='ISO8601')
     
-    # --- MODIFIED: Check for missing sensors before processing ---
+    # --- Check for missing sensors before processing ---
     # Reindex to ensure all expected sensor columns are present
     df = df.reindex(columns=config['BASE_SENSORS'])
     
@@ -56,7 +56,7 @@ def preprocessing_process(data_queue, config):
             response.raise_for_status()
             raw_data = response.json()
             
-            # --- MODIFIED: Process data and check the result ---
+            # --- Process data and check the result ---
             result = preprocess_realtime_segment(raw_data, config)
 
             if isinstance(result, pd.DataFrame):
@@ -76,7 +76,7 @@ def preprocessing_process(data_queue, config):
             time.sleep(1 / config['EMISSION_RATE_HZ'])
         except requests.exceptions.RequestException as e:
             print(f"[Preprocessor] An error occurred connecting to the emitter: {e}")
-            # --- NEW: Send an error status if request fails ---
+            # --- Send an error status if request fails ---
             error_packet = {'status': 'ERROR', 'missing_sensors': ['COMM_FAILURE']}
             data_queue.put(error_packet)
             time.sleep(2)

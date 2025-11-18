@@ -1,0 +1,47 @@
+{
+  "model_type": "CNN-LSTM",
+  "sequence_length": 30,
+  "base_sensors": [
+    "HR",
+    "EDA",
+    "TEMP",
+    "ACC"
+  ],
+  "scaler_data_min": [
+    38.80171203613281,
+    0.02561132423579693,
+    30.135725021362305,
+    0.011505126953125
+  ],
+  "scaler_data_range": [
+    66.91773986816406,
+    6.163571357727051,
+    6.17426872253418,
+    72.2484359741211
+  ],
+  "hyperparameters": {
+    "model_hyperparameters": {
+      "dense_units": 128,
+      "dropout_rate": 0,
+      "conv_filters": [
+        128,
+        256
+      ],
+      "conv_kernel_size": 5,
+      "pool_size": 2,
+      "lstm_units": 128
+    },
+    "general_hyperparameters": {
+      "epochs": 200,
+      "learning_rate": 0.0001,
+      "batch_size": 64,
+      "weight_decay": 0
+    },
+    "personalization_hyperparameters": {
+      "epochs": 200,
+      "learning_rate": 0.0001,
+      "batch_size": 64,
+      "weight_decay": 0
+    }
+  }
+}
